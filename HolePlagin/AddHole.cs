@@ -70,32 +70,38 @@ namespace HolePlagin
             foreach (Duct duct in ducts)
             {
                 Line line = (duct.Location as LocationCurve).Curve as Line;
-                XYZ point = line.GetEndPoint(0);
-                XYZ direction = line.Direction;
-
-                List<ReferenceWithContext> intersections =  referenceIntersector.Find(point, direction)
-                    .Where(x => x.Proximity <= line.Length)
-                    .Distinct(new ReferenceWithContextElementEqualityComparer())
-                    .ToList();
-                foreach(ReferenceWithContext refer in intersections)
-                {
-                    double proximity = refer.Proximity;
-                    Reference reference = refer.GetReference();
-                    Wall wall = arDoc.GetElement(reference.ElementId) as Wall;
-                    Level level = arDoc.GetElement(wall.LevelId) as Level;
-                    XYZ pointHole = point + (direction * proximity);
-
-                    FamilyInstance hole = arDoc.Create.NewFamilyInstance(pointHole, familySymbol, wall, level, StructuralType.NonStructural);
-
-                    Parameter width = hole.LookupParameter("Ширина");
-                    Parameter height = hole.LookupParameter("Высота");
-                    width.Set(duct.Diameter);
-                    height.Set(duct.Diameter);
-                }
+                AddHoleByLine(arDoc, referenceIntersector, line, familySymbol, duct.Diameter, duct.Diameter);
             }
 
             transaction.Commit();
             return Result.Succeeded;
+        }
+
+        private static void AddHoleByLine(Document document, ReferenceIntersector referenceIntersector, 
+            Line line, FamilySymbol familySymbol, double width, double height)
+        {
+            XYZ point = line.GetEndPoint(0);
+            XYZ direction = line.Direction;
+
+            List<ReferenceWithContext> intersections = referenceIntersector.Find(point, direction)
+                .Where(x => x.Proximity <= line.Length)
+                .Distinct(new ReferenceWithContextElementEqualityComparer())
+                .ToList();
+            foreach (ReferenceWithContext refer in intersections)
+            {
+                double proximity = refer.Proximity;
+                Reference reference = refer.GetReference();
+                Wall wall = document.GetElement(reference.ElementId) as Wall;
+                Level level = document.GetElement(wall.LevelId) as Level;
+                XYZ pointHole = point + (direction * proximity);
+
+                FamilyInstance hole = document.Create.NewFamilyInstance(pointHole, familySymbol, wall, level, StructuralType.NonStructural);
+
+                Parameter holeWidth = hole.LookupParameter("Ширина");
+                Parameter holeHeight = hole.LookupParameter("Высота");
+                holeWidth.Set(width);
+                holeHeight.Set(height);
+            }
         }
 
         public class ReferenceWithContextElementEqualityComparer : IEqualityComparer<ReferenceWithContext>
