@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB.Plumbing;
 
 namespace HolePlagin
 {
@@ -42,6 +43,11 @@ namespace HolePlagin
                 .OfType<Duct>()
                 .ToList();
 
+            List<Pipe> pipes = new FilteredElementCollector(ovDoc)
+                .OfClass(typeof(Pipe))
+                .OfType<Pipe>()
+                .ToList();
+
             View3D view3D = new FilteredElementCollector(arDoc)
                 .OfClass(typeof(View3D))
                 .OfType<View3D>()
@@ -71,6 +77,14 @@ namespace HolePlagin
             {
                 Line line = (duct.Location as LocationCurve).Curve as Line;
                 AddHoleByLine(arDoc, referenceIntersector, line, familySymbol, duct.Diameter, duct.Diameter);
+            }
+
+            foreach (Pipe pipe in pipes)
+            {
+                Line line = (pipe.Location as LocationCurve).Curve as Line;
+                double dimension = UnitUtils.ConvertToInternalUnits(100, UnitTypeId.Millimeters);
+                dimension = Math.Max(dimension, pipe.Diameter);
+                AddHoleByLine(arDoc, referenceIntersector, line, familySymbol, dimension, dimension);
             }
 
             transaction.Commit();
